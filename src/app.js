@@ -1,27 +1,19 @@
-const express = require("express");
+// This brings in the Express library so we can build our web server
+import express from "express";
 
-//creates app instance
+// Here we create our main app object using Express
 const app = express();
 
-// create basic middleware  || parses JSON body
+// This middleware helps us read JSON data from requests
 app.use(express.json());
 
-
-// test route
-
-app.get("/", (req, res) => {
+// This is the main route - when someone visits the root URL, we send back a simple message
+app.use("/", (req, res) => {
     res.status(200).json({
-        succsse: true,
-        message: "EventForge API is running"
+        success: true,
+        message: 'EventForge API is running'
     });
-})
+});
 
-
-// port
-const PORT = 3000;
-
-// listen
-app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-
-})
+// Finally, we export our app so other files can use it
+export default app;
