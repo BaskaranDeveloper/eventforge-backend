@@ -32,3 +32,19 @@ export const signupValidator = (req, res, next) => {
     next();
 }
 
+// Middleware to validate login data before processing
+export const loginValidator = (req, res, next) => {
+    // Get email and password from the request
+    const { email, password } = req.body;
+
+    // Make sure both are provided
+    if (!email || !password) {
+        return res.status(400).json({
+            success: false,
+            message: 'Email and Password are required'
+        })
+    }
+    // If good, continue
+    next();
+}
+
