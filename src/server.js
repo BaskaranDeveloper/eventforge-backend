@@ -1,10 +1,18 @@
-// Bring in our app from the app.js file
-import app from "./app.js";
+import dotenv from 'dotenv';
+dotenv.config(); // 👈 MUST be first
 
-// Set the port number where the server will run
-const PORT = 3000;
+import app from './app.js';
+import config from './config/index.js';
+import connectDB from './config/db.js';
 
-// Start the server and listen on the port, then log a message when it's ready
-app.listen(PORT, () => {
-    console.log(`🚀 EventForge server running on port ${PORT}`);
-});
+const startServer = async () => {
+    await connectDB();
+
+    app.listen(config.port, () => {
+        console.log(
+            `🚀 EventForge server running on port ${config.port} in ${config.env} mode`
+        );
+    });
+};
+
+startServer();
