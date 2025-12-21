@@ -7,13 +7,6 @@ export const signup = async (req, res) => {
         // Get the name, email, and password from the request
         const { name, email, password } = req.body;
 
-        // Make sure all fields are provided
-        if (!name || !email || !password) {
-            return res.status(400).json({
-                success: false,
-                message: "All fields are required"
-            });
-        };
 
         // Check if a user with this email already exists
         const existingUser = await User.findOne({ email });
