@@ -48,3 +48,27 @@ export const loginValidator = (req, res, next) => {
     next();
 }
 
+
+export const updateProfileValidator = (req, res, next) => {
+    const { name, email } = req.body;
+
+    // check name and email
+    if (!name && !email) {
+        return res.status(400).json({
+            sucess: false,
+            message: 'At least one field (name or email) is required'
+        })
+    }
+
+    if (email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid email format'
+            })
+        }
+    }
+
+    next();
+}

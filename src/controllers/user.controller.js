@@ -40,3 +40,54 @@ export const getMyProfile = async (req, res) => {
         });
     }
 }
+
+
+export const updateMyProfile = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { name, email } = req.body;
+
+        // Prevent email duplication
+        if (email) {
+            const emailExists = await User.findOne({
+                email,
+                _id: { $ne: userId }
+            });
+
+            if (emailExists) {
+                return res.status(409).json({
+                    success: false,
+                    message: 'Email already in use'
+                })
+            }
+        }
+
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            { name, email },
+            { new: true }
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: "Profile Update successfully",
+            data: {
+                id: updatedUser._id,
+                name: updatedUser.name,
+                email: updatedUser.email,
+                role: updatedUser.role
+            }
+        })
+
+    } catch (error) {
+
+        console.error('Update profile error: ', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        })
+
+
+    }
+
+}
