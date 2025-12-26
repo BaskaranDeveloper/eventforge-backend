@@ -91,3 +91,52 @@ export const updateMyProfile = async (req, res) => {
     }
 
 }
+
+export const changePassword = async (req, res) => {
+    try {
+        // first need user id
+        const userId = req.user.id;
+        // need old and new password
+        const { oldPassword, newPassword } = req.body;
+
+        // find user
+        const user = await User.findById(userId).select("+password");
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+
+        }
+
+        // verify old password
+        const isMatch = await user.comparePassword(oldPassword);
+
+        if (!isMatch) {
+            return res.status(401).json({
+                success: false,
+                message: 'Old password is incorrect'
+            });
+        }
+
+        // Update password(model hook will hash it)
+        user.password = newPassword;
+        user.save();
+
+        return res.status(200).json({
+            success: true,
+            message: 'Password changed successfully'
+        })
+
+    } catch (error) {
+
+        console.error("Change password error: ", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Internel server error"
+        })
+
+
+    }
+}
