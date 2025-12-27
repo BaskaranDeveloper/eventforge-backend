@@ -140,3 +140,56 @@ export const changePassword = async (req, res) => {
 
     }
 }
+
+
+
+
+export const resetPassword = async (req, res) => {
+    try {
+        const { token } = req.params;
+        const { newPassword } = req.body;
+        if (!newPassword) {
+            return res.status(400).json({
+                success: false,
+                message: 'New password is required'
+            });
+        }
+
+
+        const hashedToken = crypto.createHase('sha256').update(token).digest('hex');
+
+
+        const user = await User.findOne({
+            resetPasswordToken: hashedToken,
+            resetPasswordExpires: { $gt: Date.now() }
+        });
+
+        if (!user) {
+            return res.status(400).json({
+                success: false,
+                message: 'Token is invalid or expired'
+            });
+
+        }
+
+        user.password = newPassword;
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpires = undefined;
+        await user.save();
+
+        return res.status(200).json({
+            success: true,
+            message: 'Passwordreset successful'
+        })
+
+
+    } catch (error) {
+        console.error('Reset password error:', error);
+
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
+
+    }
+}
