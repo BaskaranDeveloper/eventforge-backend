@@ -1,120 +1,151 @@
-// Bring in the User model to work with user data
 import User from "../models/user.model.js";
 import { generateToken } from "../utils/token.js";
+import crypto from 'node:crypto';
 
-// Function to handle user signup
+
 export const signup = async (req, res) => {
     try {
-        // Get the name, email, and password from the request
         const { name, email, password } = req.body;
 
-
-        // Check if a user with this email already exists
         const existingUser = await User.findOne({ email });
-
         if (existingUser) {
-            res.status(409).json({
+            return res.status(409).json({
                 success: false,
                 message: "User already exists"
             });
-        };
+        }
 
-        // Create a new user in the database
-        const user = await User.create(
-            {
-                name,
-                email,
-                password
+        const user = await User.create({ name, email, password });
+
+        return res.status(201).json({
+            success: true,
+            message: "User created successfully",
+            data: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role
             }
-        );
+        });
+    } catch (error) {
+        console.error("Sign up error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    }
+};
 
-        // Send back a success response with user info
-        return res.status(200).json(
-            {
-                success: true,
-                message: "User created successfully",
-                data: {
+export const login = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        const user = await User.findOne({ email }).select("+password");
+        if (!user) {
+            return res.status(401).json({
+                success: false,
+                message: "Invalid user or password"
+            });
+        }
+
+        const isMatch = await user.comparePassword(password);
+        if (!isMatch) {
+            return res.status(401).json({
+                success: false,
+                message: "Invalid user or password"
+            });
+        }
+
+        const token = generateToken({ id: user._id, role: user.role });
+
+        return res.status(200).json({
+            success: true,
+            message: "Login successful",
+            data: {
+                token,
+                user: {
                     id: user._id,
                     name: user.name,
                     email: user.email,
                     role: user.role
                 }
             }
-        );
-
+        });
     } catch (error) {
-        // Log any errors and send a generic error response
-        console.error("Sign up error:" + error);
-
+        console.error("Login error:", error);
         return res.status(500).json({
             success: false,
-            message: "Internal Server error"
-        })
-
+            message: "Internal server error"
+        });
     }
 };
 
-
-// Function to handle user login
-export const login = async (req, res) => {
+export const forgotPassword = async (req, res) => {
     try {
-        // Get email and password from the request
-        const { email, password } = req.body;
+        const { email } = req.body;
 
-        // Find the user by email and include the password field
-        const user = await User.findOne({ email }).select("+password");
-
-        // If no user found, return error
+        const user = await User.findOne({ email });
         if (!user) {
-            return res.status(401).json({
-                success: false,
-                message: 'Invalid user or password'
-            });
-        }
-
-        // Check if the password matches
-        const isMatch = await user.comparePassword(password);
-        if (!isMatch) {
-            return res.status(401).json({
-                success: false,
-                message: 'Invalid user or password'
-            });
-
-        }
-
-        // Create a JWT token for the user
-        const token = generateToken(
-            {
-                id: user._id,
-                role: user.role
-            }
-        );
-
-        // Send back success response with token and user info
-        return res.status(200).json(
-            {
+            return res.status(200).json({
                 success: true,
-                message: 'Login successful',
-                data: {
-                    token,
-                    user: {
-                        id: user._id,
-                        name: user.name,
-                        email: user.email,
-                        role: user.role
-                    }
-                }
-            }
-        );
+                message: "If email exists, reset link will be sent"
+            });
+        }
 
+        const resetToken = user.generatePasswordResetToken();
+        await user.save({ validateBeforeSave: false });
+
+        console.log(`Reset URL (DEV): http://localhost:3000/reset-password/${resetToken}`);
+
+        return res.status(200).json({
+            success: true,
+            message: "Password reset link generated"
+        });
     } catch (error) {
-        // Log errors and send generic error response
-        console.error('Login error:', error);
-
+        console.error("Forgot password error:", error);
         return res.status(500).json({
             success: false,
-            message: 'Internal server error'
+            message: "Internal server error"
+        });
+    }
+};
+
+export const resetPassword = async (req, res) => {
+    try {
+        const { token } = req.params;
+        const { newPassword } = req.body;
+
+        const hashedToken = crypto
+            .createHash("sha256")
+            .update(token)
+            .digest("hex");
+
+        const user = await User.findOne({
+            resetPasswordToken: hashedToken,
+            resetPasswordExpires: { $gt: Date.now() }
         });
 
+        if (!user) {
+            return res.status(400).json({
+                success: false,
+                message: "Token is invalid or expired"
+            });
+        }
+
+        user.password = newPassword;
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpires = undefined;
+        await user.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Password reset successful"
+        });
+    } catch (error) {
+        console.error("Reset password error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
     }
-}
+};
