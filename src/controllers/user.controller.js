@@ -91,3 +91,59 @@ export const updateMyProfile = async (req, res) => {
     }
 
 }
+
+
+// CHANGE PASSWORD
+export const changePassword = async (req, res) => {
+    try {
+        // 1st need user id to identify
+        const userId = req.user.id;
+        // 2nd old and new password to check and update
+        const { oldPassword, newPassword } = req.body;
+
+        // validation
+        if (!oldPassword || !newPassword) {
+            return res.status(400).json({
+                success: false,
+                message: "Old and new passwords are required"
+            });
+        }
+
+        // get user with password
+        const user = await User.findById(userId).select("+password");
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        // verify old password
+        const isMatch = await user.comparePassword(oldPassword);
+        if (!isMatch) {
+            return res.status(401).json({
+                success: false,
+                message: "Old password is required"
+            });
+        }
+
+        // set new password hashed by model hook
+        user.password = newPassword;
+        await user.save();
+        return res.status(200).json({
+            success: true,
+            message: "Password changed successfully"
+        });
+
+
+    } catch (error) {
+        console.error('Change password error: ', error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        })
+
+
+    }
+}
