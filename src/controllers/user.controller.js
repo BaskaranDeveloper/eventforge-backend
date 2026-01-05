@@ -92,58 +92,104 @@ export const updateMyProfile = async (req, res) => {
 
 }
 
-
-// CHANGE PASSWORD
 export const changePassword = async (req, res) => {
     try {
-        // 1st need user id to identify
+        // first need user id
         const userId = req.user.id;
-        // 2nd old and new password to check and update
+        // need old and new password
         const { oldPassword, newPassword } = req.body;
 
-        // validation
-        if (!oldPassword || !newPassword) {
-            return res.status(400).json({
-                success: false,
-                message: "Old and new passwords are required"
-            });
-        }
-
-        // get user with password
+        // find user
         const user = await User.findById(userId).select("+password");
         if (!user) {
             return res.status(404).json({
                 success: false,
                 message: "User not found"
             });
+
         }
 
         // verify old password
         const isMatch = await user.comparePassword(oldPassword);
+
         if (!isMatch) {
             return res.status(401).json({
                 success: false,
-                message: "Old password is required"
+                message: 'Old password is incorrect'
             });
         }
 
-        // set new password hashed by model hook
+        // Update password(model hook will hash it)
         user.password = newPassword;
-        await user.save();
+        user.save();
+
         return res.status(200).json({
             success: true,
-            message: "Password changed successfully"
-        });
-
+            message: 'Password changed successfully'
+        })
 
     } catch (error) {
-        console.error('Change password error: ', error);
+
+        console.error("Change password error: ", error);
 
         return res.status(500).json({
             success: false,
-            message: "Internal server error"
+            message: "Internel server error"
         })
 
+
+    }
+}
+
+
+
+
+export const resetPassword = async (req, res) => {
+    try {
+        const { token } = req.params;
+        const { newPassword } = req.body;
+        if (!newPassword) {
+            return res.status(400).json({
+                success: false,
+                message: 'New password is required'
+            });
+        }
+
+
+        const hashedToken = crypto.createHase('sha256').update(token).digest('hex');
+
+
+        const user = await User.findOne({
+            resetPasswordToken: hashedToken,
+            resetPasswordExpires: { $gt: Date.now() }
+        });
+
+        if (!user) {
+            return res.status(400).json({
+                success: false,
+                message: 'Token is invalid or expired'
+            });
+
+        }
+
+        user.password = newPassword;
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpires = undefined;
+        await user.save();
+
+        return res.status(200).json({
+            success: true,
+            message: 'Passwordreset successful'
+        })
+
+
+    } catch (error) {
+        console.error('Reset password error:', error);
+
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
 
     }
 }
